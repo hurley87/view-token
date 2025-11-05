@@ -2,7 +2,16 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+First, set up your environment variables:
+
+1. Copy `.env.example` to `.env.local`:
+```bash
+cp .env.example .env.local
+```
+
+2. Get your Zapper API key at [https://build.zapper.xyz/](https://build.zapper.xyz/) and add it to `.env.local`
+
+Then, run the development server:
 
 ```bash
 npm run dev
@@ -28,14 +37,14 @@ Get token information by providing FID and tokenAddress.
 
 **GET Request:**
 ```bash
-curl "http://localhost:3000/api/view-token?fid=123&tokenAddress=0x1234567890123456789012345678901234567890"
+curl "http://localhost:3000/api/view-token?fid=123&tokenAddress=0x1bc0c42215582d5A085795f4baDbaC3ff36d1Bcb"
 ```
 
 **POST Request:**
 ```bash
 curl -X POST http://localhost:3000/api/view-token \
   -H "Content-Type: application/json" \
-  -d '{"fid": "123", "tokenAddress": "0x1234567890123456789012345678901234567890"}'
+  -d '{"fid": "123", "tokenAddress": "0x1bc0c42215582d5A085795f4baDbaC3ff36d1Bcb"}'
 ```
 
 ## Learn More
