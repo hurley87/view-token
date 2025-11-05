@@ -1,6 +1,157 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
+ * Fetches relevant token holders from user's social graph using Neynar API
+ */
+async function fetchRelevantHolders(tokenAddress: string, fid: string, neynarKey: string) {
+  try {
+    // Base network only
+    const url = new URL('https://api.neynar.com/v2/farcaster/fungible/owner/relevant');
+    url.searchParams.append('contract_address', tokenAddress);
+    url.searchParams.append('network', 'base');
+    url.searchParams.append('viewer_fid', fid);
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'x-api-key': neynarKey,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.top_relevant_fungible_owners_hydrated && data.top_relevant_fungible_owners_hydrated.length > 0) {
+        // Return the top relevant holders with their Farcaster profiles
+        return data.top_relevant_fungible_owners_hydrated.slice(0, 10).map((owner: any) => ({
+          address: owner.custody_address || owner.verified_addresses?.eth_addresses?.[0] || null,
+          farcasterUsername: owner.username || null,
+          farcasterFid: owner.fid || null,
+          farcasterPfp: owner.pfp_url || null,
+          displayName: owner.display_name || null,
+          followerCount: owner.follower_count || null,
+          powerBadge: owner.power_badge || false,
+        }));
+      }
+    } else {
+      console.error('Neynar API error:', await response.text());
+    }
+  } catch (error) {
+    console.error('Error fetching relevant holders from Neynar:', error);
+  }
+  return null;
+}
+
+/**
+ * Fetches token creation timestamp using Alchemy API
+ */
+async function fetchTokenAge(contractAddress: string, alchemyKey: string) {
+  try {
+    // Get the first transaction to the contract (deployment)
+    const response = await fetch(
+      `https://base-mainnet.g.alchemy.com/v2/${alchemyKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'alchemy_getAssetTransfers',
+          params: [
+            {
+              fromBlock: '0x0',
+              toBlock: 'latest',
+              toAddress: contractAddress,
+              category: ['external'],
+              maxCount: '0x1',
+              order: 'asc',
+            },
+          ],
+          id: 1,
+        }),
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.result?.transfers && data.result.transfers.length > 0) {
+        const blockNum = data.result.transfers[0].blockNum;
+
+        // Get block details to get timestamp
+        const blockResponse = await fetch(
+          `https://base-mainnet.g.alchemy.com/v2/${alchemyKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_getBlockByNumber',
+              params: [blockNum, false],
+              id: 2,
+            }),
+          }
+        );
+
+        if (blockResponse.ok) {
+          const blockData = await blockResponse.json();
+          if (blockData.result?.timestamp) {
+            // Convert hex timestamp to decimal
+            const timestamp = parseInt(blockData.result.timestamp, 16) * 1000;
+            const age = Date.now() - timestamp;
+
+            return {
+              createdAt: timestamp,
+              ageInDays: Math.floor(age / (1000 * 60 * 60 * 24)),
+              ageInHours: Math.floor(age / (1000 * 60 * 60)),
+              ageInMinutes: Math.floor(age / (1000 * 60)),
+            };
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching token age from Alchemy:', error);
+  }
+  return null;
+}
+
+/**
+ * Fetches Farcaster user information from Neynar API using an Ethereum address
+ */
+async function fetchFarcasterUserByAddress(address: string, neynarKey: string) {
+  try {
+    const neynarResponse = await fetch(
+      `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${address}`,
+      {
+        headers: {
+          'api_key': neynarKey,
+        },
+      }
+    );
+
+    if (neynarResponse.ok) {
+      const neynarData = await neynarResponse.json();
+      // Neynar returns an object with address as key
+      const usersByAddress = neynarData[address];
+      if (usersByAddress && usersByAddress.length > 0) {
+        const user = usersByAddress[0]; // Take the first user if multiple
+        return {
+          address: address,
+          farcasterUsername: user.username || null,
+          farcasterFid: user.fid || null,
+          farcasterPfp: user.pfp_url || null,
+        };
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching from Neynar:', error);
+  }
+  return null;
+}
+
+/**
  * API route handler for viewing token information
  * Accepts FID and tokenAddress as query parameters or in the request body
  */
@@ -27,6 +178,22 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const neynarKey = process.env.NEYNAR_KEY;
+  if (!neynarKey) {
+    return NextResponse.json(
+      { error: 'NEYNAR_KEY environment variable is not set' },
+      { status: 500 }
+    );
+  }
+
+  const alchemyKey = process.env.ALCHEMY_KEY;
+  if (!alchemyKey) {
+    return NextResponse.json(
+      { error: 'ALCHEMY_KEY environment variable is not set' },
+      { status: 500 }
+    );
+  }
+
   // Base chain (chainId 8453)
   const chainId = 8453;
 
@@ -38,6 +205,16 @@ export async function GET(request: NextRequest) {
         name
         decimals
         imageUrlV2
+        deployer {
+          address
+          farcasterProfile {
+            username
+            fid
+            metadata {
+              imageUrl
+            }
+          }
+        }
         priceData {
           price
           marketCap
@@ -123,17 +300,46 @@ export async function GET(request: NextRequest) {
           website: basePair.info?.websites?.[0]?.url || null,
           telegram: basePair.info?.socials?.find((s: any) => s.type === 'telegram')?.url || null,
           twitter: basePair.info?.socials?.find((s: any) => s.type === 'twitter')?.url || null,
+          dexscreenerUrl: basePair.url || null,
         };
       }
     }
 
     // Parse CoinGecko data
     let coinGeckoData = null;
+    let coinGeckoUrl = null;
     if (coinGeckoResponse.ok) {
       const cgData = await coinGeckoResponse.json();
       coinGeckoData = {
         description: cgData.description?.en || null,
       };
+      // Construct CoinGecko URL
+      if (cgData.id) {
+        coinGeckoUrl = `https://www.coingecko.com/en/coins/${cgData.id}`;
+      }
+    }
+
+    // Get creator info with multiple fallbacks
+    let creatorAddress = token.deployer?.address || null;
+    let creatorInfo = {
+      address: creatorAddress,
+      farcasterUsername: token.deployer?.farcasterProfile?.username || null,
+      farcasterFid: token.deployer?.farcasterProfile?.fid || null,
+      farcasterPfp: token.deployer?.farcasterProfile?.metadata?.imageUrl || null,
+    };
+
+    // Get relevant holders from user's social graph
+    const relevantHolders = await fetchRelevantHolders(tokenAddress, fid, neynarKey);
+
+    // Get token age
+    const tokenAge = await fetchTokenAge(tokenAddress, alchemyKey);
+
+    // If we have a creator address but no Farcaster profile from Zapper, try Neynar
+    if (creatorAddress && !token.deployer?.farcasterProfile) {
+      const neynarCreator = await fetchFarcasterUserByAddress(creatorAddress, neynarKey);
+      if (neynarCreator) {
+        creatorInfo = neynarCreator;
+      }
     }
 
     // Console log the requested fields
@@ -145,6 +351,7 @@ export async function GET(request: NextRequest) {
     console.log('priceData:', JSON.stringify(token.priceData, null, 2));
     console.log('dexScreenerData:', JSON.stringify(dexScreenerData, null, 2));
     console.log('coinGeckoData:', JSON.stringify(coinGeckoData, null, 2));
+    console.log('coinGeckoUrl:', coinGeckoUrl);
 
     return NextResponse.json({
       success: true,
@@ -154,11 +361,16 @@ export async function GET(request: NextRequest) {
         name: token.name,
         decimals: token.decimals,
         imageUrlV2: token.imageUrlV2,
+        creator: creatorInfo,
+        relevantHolders: relevantHolders,
+        age: tokenAge,
         priceData: token.priceData,
         description: coinGeckoData?.description,
         website: dexScreenerData?.website,
         telegram: dexScreenerData?.telegram,
         twitter: dexScreenerData?.twitter,
+        dexscreenerUrl: dexScreenerData?.dexscreenerUrl,
+        coinGeckoUrl: coinGeckoUrl,
       },
     });
   } catch (error) {
@@ -203,6 +415,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const neynarKey = process.env.NEYNAR_KEY;
+    if (!neynarKey) {
+      return NextResponse.json(
+        { error: 'NEYNAR_KEY environment variable is not set' },
+        { status: 500 }
+      );
+    }
+
+    const alchemyKey = process.env.ALCHEMY_KEY;
+    if (!alchemyKey) {
+      return NextResponse.json(
+        { error: 'ALCHEMY_KEY environment variable is not set' },
+        { status: 500 }
+      );
+    }
+
     // Base chain (chainId 8453)
     const chainId = 8453;
 
@@ -214,6 +442,16 @@ export async function POST(request: NextRequest) {
           name
           decimals
           imageUrlV2
+          deployer {
+            address
+            farcasterProfile {
+              username
+              fid
+              metadata {
+                imageUrl
+              }
+            }
+          }
           priceData {
             price
             marketCap
@@ -298,17 +536,46 @@ export async function POST(request: NextRequest) {
           website: basePair.info?.websites?.[0]?.url || null,
           telegram: basePair.info?.socials?.find((s: any) => s.type === 'telegram')?.url || null,
           twitter: basePair.info?.socials?.find((s: any) => s.type === 'twitter')?.url || null,
+          dexscreenerUrl: basePair.url || null,
         };
       }
     }
 
     // Parse CoinGecko data
     let coinGeckoData = null;
+    let coinGeckoUrl = null;
     if (coinGeckoResponse.ok) {
       const cgData = await coinGeckoResponse.json();
       coinGeckoData = {
         description: cgData.description?.en || null,
       };
+      // Construct CoinGecko URL
+      if (cgData.id) {
+        coinGeckoUrl = `https://www.coingecko.com/en/coins/${cgData.id}`;
+      }
+    }
+
+    // Get creator info with multiple fallbacks
+    let creatorAddress = token.deployer?.address || null;
+    let creatorInfo = {
+      address: creatorAddress,
+      farcasterUsername: token.deployer?.farcasterProfile?.username || null,
+      farcasterFid: token.deployer?.farcasterProfile?.fid || null,
+      farcasterPfp: token.deployer?.farcasterProfile?.metadata?.imageUrl || null,
+    };
+
+    // Get relevant holders from user's social graph
+    const relevantHolders = await fetchRelevantHolders(tokenAddress, fid, neynarKey);
+
+    // Get token age
+    const tokenAge = await fetchTokenAge(tokenAddress, alchemyKey);
+
+    // If we have a creator address but no Farcaster profile from Zapper, try Neynar
+    if (creatorAddress && !token.deployer?.farcasterProfile) {
+      const neynarCreator = await fetchFarcasterUserByAddress(creatorAddress, neynarKey);
+      if (neynarCreator) {
+        creatorInfo = neynarCreator;
+      }
     }
 
     // Console log the requested fields
@@ -320,6 +587,7 @@ export async function POST(request: NextRequest) {
     console.log('priceData:', JSON.stringify(token.priceData, null, 2));
     console.log('dexScreenerData:', JSON.stringify(dexScreenerData, null, 2));
     console.log('coinGeckoData:', JSON.stringify(coinGeckoData, null, 2));
+    console.log('coinGeckoUrl:', coinGeckoUrl);
 
     return NextResponse.json({
       success: true,
@@ -329,11 +597,16 @@ export async function POST(request: NextRequest) {
         name: token.name,
         decimals: token.decimals,
         imageUrlV2: token.imageUrlV2,
+        creator: creatorInfo,
+        relevantHolders: relevantHolders,
+        age: tokenAge,
         priceData: token.priceData,
         description: coinGeckoData?.description,
         website: dexScreenerData?.website,
         telegram: dexScreenerData?.telegram,
         twitter: dexScreenerData?.twitter,
+        dexscreenerUrl: dexScreenerData?.dexscreenerUrl,
+        coinGeckoUrl: coinGeckoUrl,
       },
     });
   } catch (error) {

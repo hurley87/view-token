@@ -9,7 +9,10 @@ First, set up your environment variables:
 cp .env.example .env.local
 ```
 
-2. Get your Zapper API key at [https://build.zapper.xyz/](https://build.zapper.xyz/) and add it to `.env.local`
+2. Get your API keys and add them to `.env.local`:
+   - Zapper API key: [https://build.zapper.xyz/](https://build.zapper.xyz/)
+   - Neynar API key: [https://dev.neynar.com/](https://dev.neynar.com/)
+   - Alchemy API key: [https://www.alchemy.com/](https://www.alchemy.com/) (Enable Base network)
 
 Then, run the development server:
 
@@ -46,6 +49,56 @@ curl -X POST http://localhost:3000/api/view-token \
   -H "Content-Type: application/json" \
   -d '{"fid": "7988", "tokenAddress": "0x1bc0c42215582d5A085795f4baDbaC3ff36d1Bcb"}'
 ```
+
+**Example Response (CLANKER Token):**
+```json
+{
+  "success": true,
+  "token": {
+    "address": "0x1bc0c42215582d5a085795f4badbac3ff36d1bcb",
+    "symbol": "CLANKER",
+    "name": "tokenbot",
+    "decimals": 18,
+    "imageUrlV2": "https://storage.googleapis.com/zapper-fi-assets/tokens/base/0x1bc0c42215582d5a085795f4badbac3ff36d1bcb.png",
+    "creator": {
+      "address": null,
+      "farcasterUsername": null,
+      "farcasterFid": null,
+      "farcasterPfp": null
+    },
+    "relevantHolders": null,
+    "priceData": {
+      "price": 87.63649801099281,
+      "marketCap": 87636498.01099281,
+      "priceChange5m": 1.1450909592886083,
+      "priceChange1h": 4.2887565136413786,
+      "priceChange24h": 6.588065812174371,
+      "volume24h": 15126104,
+      "totalGasTokenLiquidity": 938.9331024031162,
+      "totalLiquidity": 3125347.46590872,
+      "priceTicks": [
+        {
+          "id": "T25jaGFpbk1hcmtldERhdGFQcmljZVRpY2stMTJzOmJhc2U6MHgxYmMwYzQyMjE1NTgyZDVhMDg1Nzk1ZjRiYWRiYWMzZmYzNmQxYmNiOjE3NjIzMDk3MDQwMDA=",
+          "median": 80.041114503546,
+          "open": 79.4658312288595,
+          "close": 82.05619087497301,
+          "high": 82.05619087497301,
+          "low": 79.44213566885935,
+          "timestamp": 1762309704000
+        }
+      ]
+    },
+    "description": null,
+    "website": null,
+    "telegram": null,
+    "twitter": null,
+    "dexscreenerUrl": null,
+    "coinGeckoUrl": null
+  }
+}
+```
+
+**Note:** `relevantHolders` will contain an array of token holders from your Farcaster social graph when available.
 
 ## Learn More
 
