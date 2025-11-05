@@ -215,6 +215,9 @@ export async function GET(request: NextRequest) {
             }
           }
         }
+        holders(first: 1) {
+          totalCount
+        }
         priceData {
           price
           marketCap
@@ -363,6 +366,7 @@ export async function GET(request: NextRequest) {
         imageUrlV2: token.imageUrlV2,
         creator: creatorInfo,
         relevantHolders: relevantHolders,
+        holderCount: token.holders?.totalCount || null,
         age: tokenAge,
         priceData: token.priceData,
         description: coinGeckoData?.description,
@@ -451,6 +455,9 @@ export async function POST(request: NextRequest) {
                 imageUrl
               }
             }
+          }
+          holders(first: 1) {
+            totalCount
           }
           priceData {
             price
@@ -599,6 +606,7 @@ export async function POST(request: NextRequest) {
         imageUrlV2: token.imageUrlV2,
         creator: creatorInfo,
         relevantHolders: relevantHolders,
+        holderCount: token.holders?.totalCount || null,
         age: tokenAge,
         priceData: token.priceData,
         description: coinGeckoData?.description,
