@@ -37,14 +37,14 @@ Get token information by providing FID and tokenAddress.
 
 **GET Request:**
 ```bash
-curl "http://localhost:3000/api/view-token?fid=123&tokenAddress=0x1bc0c42215582d5A085795f4baDbaC3ff36d1Bcb"
+curl "http://localhost:3000/api/view-token?fid=7988&tokenAddress=0x1bc0c42215582d5A085795f4baDbaC3ff36d1Bcb"
 ```
 
 **POST Request:**
 ```bash
 curl -X POST http://localhost:3000/api/view-token \
   -H "Content-Type: application/json" \
-  -d '{"fid": "123", "tokenAddress": "0x1bc0c42215582d5A085795f4baDbaC3ff36d1Bcb"}'
+  -d '{"fid": "7988", "tokenAddress": "0x1bc0c42215582d5A085795f4baDbaC3ff36d1Bcb"}'
 ```
 
 ## Learn More
