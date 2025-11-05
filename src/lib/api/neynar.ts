@@ -2,7 +2,7 @@
  * Neynar API utility functions for fetching Farcaster-related data
  */
 
-interface RelevantHolder {
+export interface RelevantHolder {
   address: string | null;
   farcasterUsername: string | null;
   farcasterFid: string | null;
@@ -12,11 +12,38 @@ interface RelevantHolder {
   powerBadge: boolean;
 }
 
-interface FarcasterUser {
+export interface FarcasterUser {
   address: string;
   farcasterUsername: string | null;
   farcasterFid: string | null;
   farcasterPfp: string | null;
+}
+
+interface NeynarOwnerResponse {
+  custody_address?: string;
+  verified_addresses?: {
+    eth_addresses?: string[];
+  };
+  username?: string;
+  fid?: string;
+  pfp_url?: string;
+  display_name?: string;
+  follower_count?: number;
+  power_badge?: boolean;
+}
+
+interface NeynarRelevantHoldersResponse {
+  top_relevant_fungible_owners_hydrated?: NeynarOwnerResponse[];
+}
+
+interface NeynarUserResponse {
+  username?: string;
+  fid?: string;
+  pfp_url?: string;
+}
+
+interface NeynarBulkUserResponse {
+  [address: string]: NeynarUserResponse[];
 }
 
 /**
@@ -42,18 +69,26 @@ export async function fetchRelevantHolders(
     });
 
     if (response.ok) {
-      const data = await response.json();
-      if (data.top_relevant_fungible_owners_hydrated && data.top_relevant_fungible_owners_hydrated.length > 0) {
+      const data: NeynarRelevantHoldersResponse = await response.json();
+      if (
+        data.top_relevant_fungible_owners_hydrated &&
+        data.top_relevant_fungible_owners_hydrated.length > 0
+      ) {
         // Return the top relevant holders with their Farcaster profiles
-        return data.top_relevant_fungible_owners_hydrated.slice(0, 10).map((owner: any) => ({
-          address: owner.custody_address || owner.verified_addresses?.eth_addresses?.[0] || null,
-          farcasterUsername: owner.username || null,
-          farcasterFid: owner.fid || null,
-          farcasterPfp: owner.pfp_url || null,
-          displayName: owner.display_name || null,
-          followerCount: owner.follower_count || null,
-          powerBadge: owner.power_badge || false,
-        }));
+        return data.top_relevant_fungible_owners_hydrated
+          .slice(0, 10)
+          .map((owner: NeynarOwnerResponse): RelevantHolder => ({
+            address:
+              owner.custody_address ||
+              owner.verified_addresses?.eth_addresses?.[0] ||
+              null,
+            farcasterUsername: owner.username || null,
+            farcasterFid: owner.fid || null,
+            farcasterPfp: owner.pfp_url || null,
+            displayName: owner.display_name || null,
+            followerCount: owner.follower_count || null,
+            powerBadge: owner.power_badge || false,
+          }));
       }
     } else {
       console.error('Neynar API error:', await response.text());
@@ -82,7 +117,7 @@ export async function fetchFarcasterUserByAddress(
     );
 
     if (neynarResponse.ok) {
-      const neynarData = await neynarResponse.json();
+      const neynarData: NeynarBulkUserResponse = await neynarResponse.json();
       // Neynar returns an object with address as key
       const usersByAddress = neynarData[address];
       if (usersByAddress && usersByAddress.length > 0) {

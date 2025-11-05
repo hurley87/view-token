@@ -34,20 +34,13 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## API Endpoints
 
-### View Token
+### Fetch Token
 
 Get token information by providing FID and tokenAddress.
 
 **GET Request:**
 ```bash
-curl "http://localhost:3000/api/view-token?fid=7988&tokenAddress=0x1bc0c42215582d5A085795f4baDbaC3ff36d1Bcb"
-```
-
-**POST Request:**
-```bash
-curl -X POST http://localhost:3000/api/view-token \
-  -H "Content-Type: application/json" \
-  -d '{"fid": "7988", "tokenAddress": "0x1bc0c42215582d5A085795f4baDbaC3ff36d1Bcb"}'
+curl "http://localhost:3000/api/fetch-token?fid=7988&tokenAddress=0x1bc0c42215582d5A085795f4baDbaC3ff36d1Bcb"
 ```
 
 **Example Response (CLANKER Token):**
@@ -66,39 +59,65 @@ curl -X POST http://localhost:3000/api/view-token \
       "farcasterFid": null,
       "farcasterPfp": null
     },
-    "relevantHolders": null,
+    "relevantHolders": [
+      {
+        "address": "0x2c4832db7f6eccbb4d32ee29456d0caa20673200",
+        "farcasterUsername": "coopahtroopa.eth",
+        "farcasterFid": 206,
+        "farcasterPfp": "https://imagedelivery.net/BXluQx4ige9GuW0Ia56BHw/517f8009-3082-4ee0-11dd-32e666ff0700/original",
+        "displayName": "Coop",
+        "followerCount": 247939,
+        "powerBadge": true
+      }
+    ],
+    "holderCount": 522094,
+    "age": {
+      "createdAt": 1732476935000,
+      "ageInDays": 345,
+      "ageInHours": 8303,
+      "ageInMinutes": 498183
+    },
     "priceData": {
-      "price": 87.63649801099281,
-      "marketCap": 87636498.01099281,
-      "priceChange5m": 1.1450909592886083,
-      "priceChange1h": 4.2887565136413786,
-      "priceChange24h": 6.588065812174371,
-      "volume24h": 15126104,
-      "totalGasTokenLiquidity": 938.9331024031162,
-      "totalLiquidity": 3125347.46590872,
+      "price": 96.45391670256252,
+      "marketCap": 96453916.70256253,
+      "priceChange5m": 0.2835770914926039,
+      "priceChange1h": 0.9012902644845111,
+      "priceChange24h": 33.48196399105263,
+      "volume24h": 13994416,
+      "totalGasTokenLiquidity": 1011.1353878840569,
+      "totalLiquidity": 3495267.4293393716,
       "priceTicks": [
         {
-          "id": "T25jaGFpbk1hcmtldERhdGFQcmljZVRpY2stMTJzOmJhc2U6MHgxYmMwYzQyMjE1NTgyZDVhMDg1Nzk1ZjRiYWRiYWMzZmYzNmQxYmNiOjE3NjIzMDk3MDQwMDA=",
-          "median": 80.041114503546,
-          "open": 79.4658312288595,
-          "close": 82.05619087497301,
-          "high": 82.05619087497301,
-          "low": 79.44213566885935,
-          "timestamp": 1762309704000
+          "id": "T25jaGFpbk1hcmtldERhdGFQcmljZVRpY2stMTJzOmJhc2U6MHgxYmMwYzQyMjE1NTgyZDVhMDg1Nzk1ZjRiYWRiYWMzZmYzNmQxYmNiOjE3NjIzNjQzNDAwMDA=",
+          "median": 95.01797021381122,
+          "open": 96.06526023808092,
+          "close": 95.33461288350819,
+          "high": 96.06526023808092,
+          "low": 93.99942020356256,
+          "timestamp": 1762364340000
         }
       ]
     },
-    "description": null,
-    "website": null,
-    "telegram": null,
-    "twitter": null,
-    "dexscreenerUrl": null,
-    "coinGeckoUrl": null
+    "description": "Clanker is an autonomous agent for deploying tokens. Currently, users may request clanker to deploy an ERC-20 token on Base by tagging it @clanker on Farcaster.",
+    "website": "https://clanker.world",
+    "telegram": "https://t.me/clankerfc",
+    "twitter": "https://x.com/clankeronbase",
+    "dexscreenerUrl": "https://dexscreener.com/base/0xc1a6fbedae68e1472dbb91fe29b51f7a0bd44f97",
+    "coinGeckoUrl": "https://www.coingecko.com/en/coins/clanker"
   }
 }
 ```
 
-**Note:** `relevantHolders` will contain an array of token holders from your Farcaster social graph when available.
+**Response Fields:**
+- `holderCount`: Total number of token holders
+- `age`: Token creation timestamp and age in days/hours/minutes
+- `relevantHolders`: Array of token holders from your Farcaster social graph (includes displayName, followerCount, and powerBadge status)
+- `description`: Token description from CoinGecko
+- `website`: Official token website from DexScreener
+- `telegram`: Telegram community link from DexScreener
+- `twitter`: Twitter/X account from DexScreener
+- `dexscreenerUrl`: DexScreener chart URL
+- `coinGeckoUrl`: CoinGecko token page URL
 
 ## Learn More
 
